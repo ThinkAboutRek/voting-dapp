@@ -12,3 +12,4 @@ export const PARTICLE_OPTIONS = {//TODO: client provided keys
   export const WALLET_CONNECT_PROJECT_ID = '739e1b6df1475b28c372b00a8c67064a' 
   export const BACKEND_BASE_URL =
   "http://localhost:5001";
+  export const CONTRACT_ADDRESS = '0xb7DFD4Ca6874F464c2274410494972eBF86A6D92';
