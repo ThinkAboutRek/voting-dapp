@@ -46,6 +46,7 @@ export default function UserDashboard() {
           Decentralized Voting DApp
         </h1>
 
+        {/* Wallet Connection Section */}
         <div className="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl mb-8">
           {!isConnected ? (
             <>
@@ -72,97 +73,67 @@ export default function UserDashboard() {
           )}
         </div>
 
-        {!loading && isConnected && (
-          <div className="bg-yellow-900 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl mb-8 border-l-4 border-yellow-500">
-            <div className="flex items-center">
-              <div className="mr-4 flex-shrink-0">
-                <svg className="h-8 w-8 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <p className="font-medium text-lg text-yellow-300">KYC Required</p>
-                <p className="text-yellow-200">
-                  Please complete KYC verification to access voting features.
-                </p>
-              </div>
+        {/* Voting Section - Now Shows Proposals First */}
+        <div className="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl border-l-4 border-blue-500">
+          <h2 className="text-2xl font-bold mb-4 text-center text-blue-400">Ongoing Voting Session</h2>
+          
+          {/* Show Candidates First (Before Verification) */}
+          {candidates && candidates.length > 0 ? (
+            <>
+              <p className="text-gray-300 text-center mb-4">
+                Select a candidate to cast your vote.
+              </p>
+              <ul className="bg-gray-700 p-4 rounded-lg shadow-inner space-y-2">
+                {candidates.map((candidate) => (
+                  <li key={candidate.id} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg">
+                    <span className="text-white font-medium">{candidate.name}</span>
+                    <button
+                      onClick={() => {
+                        if (!isVerified) {
+                          toast.error("You must verify as a voter before casting your vote.");
+                          verifyVoter();  // Auto-trigger verification process
+                          return;
+                        }
+                        castVote(candidate.id);
+                      }}
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg text-sm font-medium"
+                    >
+                      Vote
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="text-gray-400 text-center">No active voting sessions available.</p>
+          )}
+        </div>
+
+        {/* Verify as Voter - Only Visible When Needed */}
+        {!isVerified && (
+          <div className="mt-6 bg-yellow-900 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl border-l-4 border-yellow-500">
+            <h2 className="text-xl font-bold text-yellow-300 mb-3 text-center">Become a Verified Voter</h2>
+            <p className="text-yellow-200 text-center mb-3">
+              To participate in voting, you must first verify as a voter.
+            </p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => verifyVoter()}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg text-sm font-medium"
+              >
+                Verify Now
+              </button>
             </div>
           </div>
         )}
 
-        <div
-          className={`bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl ${
-            loading ? "border-l-4 border-green-500" : "opacity-50 pointer-events-none border-l-4 border-gray-600"
-          }`}
-        >
-          <h2 className="text-2xl font-bold mb-4 text-center text-blue-400">
-            Voting Section
-          </h2>
-          
-          {loading ? (
-            <div className="space-y-4">
-              {isVerified ? (
-                <>
-                  {!hasVoted ? (
-                    <>
-                      <p className="text-gray-300 text-center">
-                        Select a candidate and cast your vote.
-                      </p>
-                      <ul className="bg-gray-700 p-4 rounded-lg shadow-inner space-y-2">
-                        {candidates && candidates.length > 0 ? (
-                          candidates.map((candidate) => (
-                            <li key={candidate.id} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg">
-                              <span className="text-white font-medium">{candidate.name}</span>
-                              <button
-                                onClick={() => castVote(candidate.id)}
-                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg text-sm font-medium"
-                              >
-                                Vote
-                              </button>
-                            </li>
-                          ))
-                        ) : (
-                          <p className="text-center text-gray-400">No candidates available.</p>
-                        )}
-                      </ul>
-                    </>
-                  ) : (
-                    <p className="text-green-400 text-center">You have already voted. Thank you for participating!</p>
-                  )}
-                </>
-              ) : (
-                <div className="text-center">
-                  <p className="text-yellow-400 mb-3">You are not a verified voter.</p>
-                  <button
-                    onClick={() => verifyVoter()}
-                    className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
-                  >
-                    Verify as Voter
-                  </button>
-                </div>
-              )}
-
-              {currentState === 2 && winners && winners.length > 0 && (
-                <div className="bg-blue-900 p-4 rounded-lg shadow-inner mt-6">
-                  <h3 className="text-white text-lg font-bold mb-2">Election Winner</h3>
-                  <p className="text-gray-300">🎉 {winners[0].name} won the election!</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-gray-400 text-center">
-                Complete KYC verification to access voting features.
-              </p>
-              <div className="bg-gray-700 p-4 rounded-lg shadow-inner flex justify-center">
-                <svg className="animate-spin h-8 w-8 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Election Winner (if applicable) */}
+        {currentState === 2 && winners && winners.length > 0 && (
+          <div className="bg-blue-900 p-4 rounded-lg shadow-inner mt-6">
+            <h3 className="text-white text-lg font-bold mb-2">🎉 Election Winner</h3>
+            <p className="text-gray-300">{winners[0].name} won the election!</p>
+          </div>
+        )}
       </div>
     </main>
   );
