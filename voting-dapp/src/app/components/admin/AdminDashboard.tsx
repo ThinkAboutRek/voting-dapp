@@ -54,7 +54,7 @@ const AdminDashboard = () => {
         }, 3000);
       }
     }
-  }, [contractOwner, address, isConnected]);
+  }, [contractOwner, address, isConnected,router]);
 
   // 🚫 If Wallet is Not Connected → Show "Connect Wallet" Instead of Access Denied
   if (!isConnected) {

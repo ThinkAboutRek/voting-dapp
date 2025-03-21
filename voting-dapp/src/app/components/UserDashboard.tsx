@@ -37,7 +37,7 @@ export default function UserDashboard() {
     } else if (kycStatus !== "") {
       openModal();
     }
-  }, [isConnected, kycStatus, refetchCandidates]);
+  }, [isConnected, kycStatus, refetchCandidates, openModal]); 
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-start bg-gradient-to-b from-gray-900 to-indigo-950 text-white p-6">
@@ -73,10 +73,10 @@ export default function UserDashboard() {
           )}
         </div>
 
-        {/* Voting Section - Now Shows Proposals First */}
+        {/* Voting Section - Candidates Appear First */}
         <div className="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl border-l-4 border-blue-500">
           <h2 className="text-2xl font-bold mb-4 text-center text-blue-400">Ongoing Voting Session</h2>
-          
+
           {/* Show Candidates First (Before Verification) */}
           {candidates && candidates.length > 0 ? (
             <>
@@ -91,14 +91,18 @@ export default function UserDashboard() {
                       onClick={() => {
                         if (!isVerified) {
                           toast.error("You must verify as a voter before casting your vote.");
-                          verifyVoter();  // Auto-trigger verification process
                           return;
                         }
                         castVote(candidate.id);
                       }}
-                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg text-sm font-medium"
+                      disabled={!isVerified || hasVoted}
+                      className={`px-4 py-2 rounded-lg transition-all duration-300 shadow-md text-sm font-medium ${
+                        !isVerified || hasVoted 
+                          ? "bg-gray-600 cursor-not-allowed"
+                          : "bg-green-500 hover:bg-green-600 text-white"
+                      }`}
                     >
-                      Vote
+                      {hasVoted ? "Voted" : "Vote"}
                     </button>
                   </li>
                 ))}
@@ -110,7 +114,7 @@ export default function UserDashboard() {
         </div>
 
         {/* Verify as Voter - Only Visible When Needed */}
-        {!isVerified && (
+        {!isVerified && isConnected && (
           <div className="mt-6 bg-yellow-900 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl border-l-4 border-yellow-500">
             <h2 className="text-xl font-bold text-yellow-300 mb-3 text-center">Become a Verified Voter</h2>
             <p className="text-yellow-200 text-center mb-3">
@@ -131,7 +135,11 @@ export default function UserDashboard() {
         {currentState === 2 && winners && winners.length > 0 && (
           <div className="bg-blue-900 p-4 rounded-lg shadow-inner mt-6">
             <h3 className="text-white text-lg font-bold mb-2">🎉 Election Winner</h3>
-            <p className="text-gray-300">{winners[0].name} won the election!</p>
+            {winners.map((winner) => (
+              <p key={winner.id} className="text-gray-300">
+                {winner.name} won with {winner.voteCount} votes!
+              </p>
+            ))}
           </div>
         )}
       </div>

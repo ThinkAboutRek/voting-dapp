@@ -4,7 +4,7 @@ import { CONTRACT_ADDRESS } from "../utils/constants";
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 
-type VotingState = 0 | 1 | 2  // 0: Setup, 1: Active, 2: Ended
+type VotingState = 0 | 1 | 2; // 0: Setup, 1: Active, 2: Ended
 type Candidate = {
   id: number;
   name: string;
@@ -12,22 +12,23 @@ type Candidate = {
 };
 
 export const useVotingContract = () => {
-  const { address, isConnected } = useAccount(); 
-  const { writeContract, data: txHash, isPending, isSuccess, isError } = useWriteContract(); 
+  const { address, isConnected } = useAccount();
+  const { writeContract, isPending, isSuccess, isError } = useWriteContract();
 
   const [isLoading, setIsLoading] = useState(false);
   const [contractOwner, setContractOwner] = useState<string | null>(null);
   const [transactionStatus, setTransactionStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
 
-  const showToast = (message: string, type: "success" | "error") => {
+  // Prevent duplicate toasts
+  const showToast = (message: string, type: "success" | "error", id: string) => {
     if (type === "success") {
-      toast.success(message);
+      toast.success(message, { id });
     } else {
-      toast.error(message);
+      toast.error(message, { id });
     }
   };
 
-  // Contract read hooks with better typing
+  // Contract read hooks
   const { data: owner, refetch: refetchOwner } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: votingABI,
@@ -78,7 +79,6 @@ export const useVotingContract = () => {
     functionName: "getWinner",
   });
 
-  // Refetch all contract data
   const refetchAllData = useCallback(() => {
     refetchCurrentState();
     refetchCandidates();
@@ -89,90 +89,89 @@ export const useVotingContract = () => {
     refetchStartTime();
     refetchEndTime();
     refetchWinners();
-  }, [address]);
+  }, [
+    address, 
+    refetchCurrentState, 
+    refetchCandidates, 
+    refetchHasVoted, 
+    refetchIsVerified, 
+    refetchStartTime, 
+    refetchEndTime, 
+    refetchWinners
+  ]);
+  
+  
 
-  // Set contract owner
   useEffect(() => {
     if (owner) {
       setContractOwner(owner as string);
     }
   }, [owner]);
 
-  // Track transaction status
- // Track transaction status with better user feedback
-useEffect(() => {
-  if (isPending) {
-    setTransactionStatus('pending');
+  // Prevent transactions if wallet is not connected
+  const executeTransaction = async (
+    action: string, 
+    statePrecondition: { 
+      check: boolean; 
+      errorMessage: string; 
+    }, 
+    args: any[] = [],
+    successMessage?: string
+  ) => {
+    if (!isConnected) {
+      showToast("Please connect your wallet first!", "error", "wallet-toast");
+      return;
+    }
+
+    if (!statePrecondition.check) {
+      showToast(statePrecondition.errorMessage, "error", "state-toast");
+      return;
+    }
+
     setIsLoading(true);
-    toast.loading("Transaction submitted to blockchain...", { id: "tx-toast" });
-  } else if (isSuccess) {
-    setTransactionStatus('success');
-    setIsLoading(false);
-    toast.success("Transaction confirmed!", { id: "tx-toast" });
-    refetchAllData();
-  } else if (isError) {
-    setTransactionStatus('error');
-    setIsLoading(false);
-    toast.error("Transaction failed. Please try again.", { id: "tx-toast" });
-  }
-}, [isPending, isSuccess, isError]);
+    try {
+      toast.loading(`Processing ${action}...`, { id: "tx-toast" });
 
-// Enhanced executeTransaction helper with better toast messages
-const executeTransaction = async (
-  action: string, 
-  statePrecondition: { 
-    check: boolean; 
-    errorMessage: string 
-  }, 
-  args: any[] = [],
-  successMessage?: string
-) => {
-  if (!statePrecondition.check) {
-    toast.error(statePrecondition.errorMessage);
-    return;
-  }
+      await writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: votingABI,
+        functionName: action,
+        args: args.length > 0 ? args : undefined,
+      });
 
-  const actionFormatted = action.replace(/([A-Z])/g, ' $1').toLowerCase();
-  
-  setIsLoading(true);
-  try {
-    toast.loading(`Preparing to ${actionFormatted}...`, { id: "prep-toast" });
-    
-    await writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: votingABI,
-      functionName: action,
-      args: args.length > 0 ? args : undefined,
-    });
-    
-    toast.success(successMessage || `${actionFormatted} transaction submitted!`, { id: "prep-toast" });
-  } catch (error) {
-    toast.error(`Error: Could not ${actionFormatted}`, { id: "prep-toast" });
-    console.error(`❌ Error in ${action}:`, error);
-    setIsLoading(false);
-  }
-};
+      showToast(successMessage || `${action} executed successfully!`, "success", "tx-toast");
+      refetchAllData();
+    } catch (error) {
+      showToast(`Failed to ${action}. Try again.`, "error", "tx-toast");
+      console.error(`❌ Error in ${action}:`, error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-const verifyVoter = async () => {
-  await executeTransaction(
-    "verifyVoter",
-    { 
-      check: currentState === 0 || currentState === 1,  // Setup or Active phase
-      errorMessage: "Voter verification is only allowed during Setup or Active phase!" 
-    },
-    [],
-    "You have been successfully verified as a voter!"
-  );
-};
+  const verifyVoter = async () => {
+    if (isVerified) {
+      showToast("You are already a verified voter!", "error", "verify-toast");
+      return;
+    }
 
+    await executeTransaction(
+      "verifyVoter",
+      { 
+        check: currentState === 0 || currentState === 1, 
+        errorMessage: "Voter verification is only allowed during Setup or Active phase!" 
+      },
+      [],
+      "You have been successfully verified as a voter!"
+    );
+  };
 
-  // Refactored contract functions using the executeTransaction helper
   const castVote = async (candidateId: number) => {
     await executeTransaction(
       "castVote",
       { 
         check: currentState === 1 && !!isVerified, 
-        errorMessage: "Cannot cast vote. Voting is not active or you are not a verified voter!" 
+        errorMessage: "Cannot vote. Either voting is not active or you are not verified!" 
       },
       [candidateId]
     );
@@ -221,6 +220,7 @@ const verifyVoter = async () => {
       `Added ${candidateIds.length} candidate(s) successfully!`
     );
   };
+
   const removeCandidates = async (candidateIds: number[]) => {
     await executeTransaction(
       "removeMultipleCandidates",
@@ -233,7 +233,6 @@ const verifyVoter = async () => {
   };
 
   const setVotingPeriod = async (durationInSeconds: number) => {
-    
     await executeTransaction(
       "setVotingPeriod",
       { 
@@ -244,7 +243,6 @@ const verifyVoter = async () => {
       `Voting duration set to ${durationInSeconds} seconds!`
     );
   };
-  
 
   return {
     candidates: candidates as Candidate[] | undefined,
