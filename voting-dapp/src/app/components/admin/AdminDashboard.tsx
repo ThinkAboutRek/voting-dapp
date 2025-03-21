@@ -84,7 +84,7 @@ const AdminDashboard = () => {
             🚫 Access Denied
           </h1>
           <p className="text-gray-300 text-center">
-            You don't have admin privileges. Redirecting to home...
+            You do not have admin privileges. Redirecting to home...
           </p>
         </div>
       </div>
