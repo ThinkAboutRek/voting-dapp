@@ -9,7 +9,12 @@ const port = 5001;
 app.use(cors())
 
 
-app.use(express.json());
+app.use(express.json(),corscors({
+  origin: [`http://localhost:${port}`, "https://voting-dapp-inner-bgxl.vercel.app/"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+}));
 
 app.get('/', (req, res) => {
   res.json({message:'Shapater'})
