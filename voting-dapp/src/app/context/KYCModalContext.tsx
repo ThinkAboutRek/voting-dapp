@@ -47,7 +47,7 @@ export const KYCModalProvider: FC<ModalProviderProps> = ({ children }) => {
     } else if (!account) {
       closeModal();
     }
-  }, [kycAccessToken, account, kycStatus,openModal]);
+  }, [kycAccessToken, account, kycStatus]);
   
 
   const applicantStatus = async (id: string) => {
