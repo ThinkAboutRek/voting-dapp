@@ -18,6 +18,7 @@ const AdminDashboard = () => {
     addCandidates,
     removeCandidates,
     candidates,
+    remainingTime,
     votingStartTime,
     votingEndTime,
     currentState,
@@ -29,6 +30,7 @@ const AdminDashboard = () => {
   const [showCandidateForm, setShowCandidateForm] = useState(false);
   const [showRemoveCandidateForm, setShowRemoveCandidateForm] = useState(false);
   const [showDurationForm, setShowDurationForm] = useState(false);
+  
 
   const [candidates1, setCandidates1] = useState<{ id: string; name: string }[]>([
     { id: "", name: "" }, // Default empty candidate entry
@@ -37,12 +39,12 @@ const AdminDashboard = () => {
   const [votingDuration, setVotingDuration] = useState("");
   const router = useRouter();
 
-  // ✅ Only check admin status after wallet is connected
   useEffect(() => {
     if (!isConnected) {
       setIsAdmin(null);
       return;
     }
+
 
     if (contractOwner && address) {
       if (contractOwner.toLowerCase() === address.toLowerCase()) {
@@ -50,13 +52,16 @@ const AdminDashboard = () => {
       } else {
         setIsAdmin(false);
         setTimeout(() => {
-          router.push("/"); // Redirect to home after 3 seconds
+          router.push("/"); 
         }, 3000);
       }
     }
-  }, [contractOwner, address, isConnected,router]);
+  }, [contractOwner, address, isConnected, router]);
 
-  // 🚫 If Wallet is Not Connected → Show "Connect Wallet" Instead of Access Denied
+  console.log("Admin Dashboard - Address:", address);
+  console.log("Admin Dashboard - Contract Owner:", contractOwner);  
+
+
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-indigo-950 text-white p-6">
@@ -75,7 +80,6 @@ const AdminDashboard = () => {
     );
   }
 
-  // 🚫 If Wallet is Connected but NOT Admin → Show "Access Denied"
   if (isAdmin === false) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-red-950 text-white p-6">
@@ -91,19 +95,16 @@ const AdminDashboard = () => {
     );
   }
 
-  // ✅ Add Candidate Field
   const addCandidateField = () => {
     setCandidates1([...candidates1, { id: "", name: "" }]);
   };
 
-  // ✅ Handle Input Change
   const handleCandidateChange = (index: number, field: "id" | "name", value: string) => {
     const newCandidates = [...candidates1];
     newCandidates[index][field] = value;
     setCandidates1(newCandidates);
   };
 
-  // ✅ Submit Candidates
   const submitCandidates = () => {
     const ids = candidates1.map((c) => Number(c.id)).filter((id) => !isNaN(id));
     const names = candidates1.map((c) => c.name.trim()).filter((name) => name !== "");
@@ -114,9 +115,8 @@ const AdminDashboard = () => {
     }
 
     addCandidates(ids, names);
-    setCandidates1([]); // Clear after submission
+    setCandidates1([]);
   };
-
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-start bg-gradient-to-b from-gray-900 to-indigo-950 text-white p-6">
@@ -152,17 +152,16 @@ const AdminDashboard = () => {
               <h2 className="text-2xl font-bold mb-4 text-center">📜 Contract State</h2>
               <p className="text-center text-yellow-400">
                 {currentState === 0 ? "Setup Phase" : currentState === 1 ? "Voting Active" : "Voting Ended"}
-              </p>  
+              </p>
             </div>
 
-            {/* 🔹 Candidate List */}
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
               <h2 className="text-2xl font-bold mb-4 text-center">👤 Candidates</h2>
               {candidates && candidates.length > 0 ? (
                 <ul className="text-center">
                   {candidates.map((candidate, index) => (
                     <li key={index} className="text-gray-300">
-                      🗳 {candidate.id} - {candidate.name} ({candidate.voteCount} votes)
+                       {String(candidate.candidateId)} - {candidate.candidateName} - Votes {String(candidate.voteCount)}
                     </li>
                   ))}
                 </ul>
@@ -171,24 +170,29 @@ const AdminDashboard = () => {
               )}
             </div>
 
-            {/* 🔹 Voting Period */}
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
               <h2 className="text-2xl font-bold mb-4 text-center">🕒 Voting Period</h2>
               <p className="text-center text-yellow-400">
-                Start: {votingStartTime ? new Date(Number(votingStartTime) * 1000).toLocaleString() : "Not Set"}
-              </p>
-              <p className="text-center text-yellow-400">
-                End: {votingEndTime ? new Date(Number(votingEndTime) * 1000).toLocaleString() : "Not Set"}
+                {remainingTime !== null ? (
+                  remainingTime > 0 ? (
+                    <p>🕒 Voting ends in: <strong>{Math.floor(remainingTime / 60)} min {remainingTime % 60} sec</strong></p>
+                  ) : (
+                    <p>🚨 Voting has ended!</p>
+                  )
+                ) : (
+                  <p>...</p>
+                )}
               </p>
             </div>
 
-            {/* 🔹 Election Winner */}
+           
+
             {winners && winners.length > 0 && (
               <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
                 <h2 className="text-2xl font-bold mb-4 text-center">🏆 Election Winner</h2>
-                {winners.map((winner, index) => (
-                  <p key={index} className="text-center text-green-400">
-                    {winner.name} with {winner.voteCount} votes!
+                {winners && Array.isArray(winners) && winners.map((winner) => (
+                  <p key={winner.candidateId} className="text-gray-300 text-center">
+                    {winner.candidateName} won with {winner.voteCount} votes!
                   </p>
                 ))}
               </div>
@@ -315,6 +319,7 @@ const AdminDashboard = () => {
                       className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     />
                     <button
+                    
                       onClick={() => setVotingPeriod(parseInt(votingDuration))}
                       disabled={isLoading}
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed font-medium"
@@ -327,7 +332,7 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
-          </div>
+      </div>
     </main>
   );
 };

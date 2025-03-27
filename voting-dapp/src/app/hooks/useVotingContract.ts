@@ -1,25 +1,27 @@
+"use client"
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
-import votingABI from "../utils/votingABI.json"; 
-import { CONTRACT_ADDRESS } from "../utils/constants"; 
+import votingABI from "../utils/votingABI.json";
+import { SEPOLIA_CONTRACT_ADDRESS } from "../utils/constants";
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 
-type VotingState = 0 | 1 | 2; // 0: Setup, 1: Active, 2: Ended
+type VotingState = 0 | 1 | 2;
 type Candidate = {
-  id: number;
-  name: string;
+  candidateId: number;
+  candidateName: string;
   voteCount: number;
 };
 
 export const useVotingContract = () => {
   const { address, isConnected } = useAccount();
   const { writeContract, isPending, isSuccess, isError } = useWriteContract();
-
+  const [remainingTime, setRemainingTime] = useState<number | null>(null);
+  const [winners, setWinners] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [contractOwner, setContractOwner] = useState<string | null>(null);
   const [transactionStatus, setTransactionStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
 
-  // Prevent duplicate toasts
+
   const showToast = (message: string, type: "success" | "error", id: string) => {
     if (type === "success") {
       toast.success(message, { id });
@@ -28,53 +30,54 @@ export const useVotingContract = () => {
     }
   };
 
-  // Contract read hooks
   const { data: owner, refetch: refetchOwner } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: SEPOLIA_CONTRACT_ADDRESS,
     abi: votingABI,
-    functionName: "owner",
+    functionName: "owner"
   });
 
+
   const { data: candidates, refetch: refetchCandidates } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: SEPOLIA_CONTRACT_ADDRESS,
     abi: votingABI,
     functionName: "getAllCandidatesData",
   });
 
   const { data: hasVoted, refetch: refetchHasVoted } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: SEPOLIA_CONTRACT_ADDRESS,
     abi: votingABI,
     functionName: "hasVoted",
     args: address ? [address] : undefined,
   });
 
   const { data: isVerified, refetch: refetchIsVerified } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: SEPOLIA_CONTRACT_ADDRESS,
     abi: votingABI,
     functionName: "isVerifiedVoter",
     args: address ? [address] : undefined,
   });
 
   const { data: currentState, refetch: refetchCurrentState } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: SEPOLIA_CONTRACT_ADDRESS,
     abi: votingABI,
     functionName: "currentState",
   });
 
   const { data: votingStartTime, refetch: refetchStartTime } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: SEPOLIA_CONTRACT_ADDRESS,
     abi: votingABI,
     functionName: "votingStartTime",
   });
 
+
   const { data: votingEndTime, refetch: refetchEndTime } = useReadContract({
-    address: CONTRACT_ADDRESS,
+    address: SEPOLIA_CONTRACT_ADDRESS,
     abi: votingABI,
     functionName: "votingEndTime",
   });
 
-  const { data: winners, refetch: refetchWinners } = useReadContract({
-    address: CONTRACT_ADDRESS,
+  const { data: winnersRaw, refetch: refetchWinners } = useReadContract({
+    address: SEPOLIA_CONTRACT_ADDRESS,
     abi: votingABI,
     functionName: "getWinner",
   });
@@ -90,31 +93,61 @@ export const useVotingContract = () => {
     refetchEndTime();
     refetchWinners();
   }, [
-    address, 
-    refetchCurrentState, 
-    refetchCandidates, 
-    refetchHasVoted, 
-    refetchIsVerified, 
-    refetchStartTime, 
-    refetchEndTime, 
+    address,
+    refetchCurrentState,
+    refetchCandidates,
+    refetchHasVoted,
+    refetchOwner,
+    refetchIsVerified,
+    refetchStartTime,
+    refetchEndTime,
     refetchWinners
   ]);
-  
-  
+
+  useEffect(() => {
+    if (votingEndTime) {
+      const interval = setInterval(() => {
+        const now = Math.floor(Date.now() / 1000);
+        const timeLeft = Number(votingEndTime) - now;
+        setRemainingTime(timeLeft > 0 ? timeLeft : 0);
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [votingEndTime]);
 
   useEffect(() => {
     if (owner) {
       setContractOwner(owner as string);
+    } else {
+      setContractOwner(null);
     }
   }, [owner]);
 
-  // Prevent transactions if wallet is not connected
+
+  useEffect(() => {
+    if (winnersRaw && Array.isArray(winnersRaw)) {
+
+      const rawWinnerArray = winnersRaw[0];
+      if (!Array.isArray(rawWinnerArray)) {
+        return;
+      }
+
+      const formattedWinners = rawWinnerArray.map((winnerObj: any) => {
+        return {
+          candidateId: Number(winnerObj.candidateId),
+          candidateName: String(winnerObj.candidateName),
+          voteCount: Number(winnerObj.voteCount),
+        };
+      });
+
+      setWinners(formattedWinners);
+    }
+  }, [winnersRaw]);
+
   const executeTransaction = async (
-    action: string, 
-    statePrecondition: { 
-      check: boolean; 
-      errorMessage: string; 
-    }, 
+    action: string,
+    statePrecondition: { check: boolean; errorMessage: string },
     args: any[] = [],
     successMessage?: string
   ) => {
@@ -124,28 +157,33 @@ export const useVotingContract = () => {
     }
 
     if (!statePrecondition.check) {
-      showToast(statePrecondition.errorMessage, "error", "state-toast");
+      showToast(statePrecondition.errorMessage, "error", `${action}-precondition-toast`);
       return;
     }
 
-    setIsLoading(true);
     try {
-      toast.loading(`Processing ${action}...`, { id: "tx-toast" });
+      setTransactionStatus('pending');
+      showToast("Transaction processing...", "success", `${action}-pending-toast`);
 
-      await writeContract({
-        address: CONTRACT_ADDRESS,
+      writeContract({
+        address: SEPOLIA_CONTRACT_ADDRESS,
         abi: votingABI,
         functionName: action,
         args: args.length > 0 ? args : undefined,
+      }, {
+        onSuccess(data) {
+          setTransactionStatus('success');
+          showToast(successMessage || "Transaction successful!", "success", `${action}-success-toast`);
+          refetchAllData();
+        },
+        onError(error) {
+          setTransactionStatus('error');
+          showToast(`Transaction failed: ${error.message}`, "error", `${action}-error-toast`);
+        }
       });
-
-      showToast(successMessage || `${action} executed successfully!`, "success", "tx-toast");
-      refetchAllData();
-    } catch (error) {
-      showToast(`Failed to ${action}. Try again.`, "error", "tx-toast");
-      console.error(`❌ Error in ${action}:`, error);
-    } finally {
-      setIsLoading(false);
+    } catch (error: any) {
+      setTransactionStatus('error');
+      showToast(`Transaction error: ${error.message}`, "error", `${action}-error-toast`);
     }
   };
 
@@ -157,9 +195,9 @@ export const useVotingContract = () => {
 
     await executeTransaction(
       "verifyVoter",
-      { 
-        check: currentState === 0 || currentState === 1, 
-        errorMessage: "Voter verification is only allowed during Setup or Active phase!" 
+      {
+        check: currentState === 0 || currentState === 1,
+        errorMessage: "Voter verification is only allowed during Setup or Active phase!"
       },
       [],
       "You have been successfully verified as a voter!"
@@ -169,9 +207,9 @@ export const useVotingContract = () => {
   const castVote = async (candidateId: number) => {
     await executeTransaction(
       "castVote",
-      { 
-        check: currentState === 1 && !!isVerified, 
-        errorMessage: "Cannot vote. Either voting is not active or you are not verified!" 
+      {
+        check: (currentState === 1 && isVerified === true),
+        errorMessage: "Cannot vote. Either voting is not active or you are not verified!"
       },
       [candidateId]
     );
@@ -180,9 +218,9 @@ export const useVotingContract = () => {
   const startVoting = async () => {
     await executeTransaction(
       "startVoting",
-      { 
-        check: currentState === 0, 
-        errorMessage: "Cannot start voting. Not in Setup phase!" 
+      {
+        check: currentState === 0,
+        errorMessage: "Cannot start voting. Not in Setup phase!"
       },
       [],
       "Voting period has started!"
@@ -192,9 +230,9 @@ export const useVotingContract = () => {
   const endVoting = async () => {
     await executeTransaction(
       "endVoting",
-      { 
-        check: currentState === 1, 
-        errorMessage: "Cannot end voting. Not in Active phase!" 
+      {
+        check: currentState === 1,
+        errorMessage: "Cannot end voting. Not in Active phase!"
       }
     );
   };
@@ -202,9 +240,9 @@ export const useVotingContract = () => {
   const finalizeVoting = async () => {
     await executeTransaction(
       "finalizeVoting",
-      { 
-        check: currentState === 2, 
-        errorMessage: "Cannot finalize. Voting is not Ended yet!" 
+      {
+        check: currentState === 2,
+        errorMessage: "Cannot finalize. Voting is not Ended yet!"
       }
     );
   };
@@ -212,9 +250,9 @@ export const useVotingContract = () => {
   const addCandidates = async (candidateIds: number[], names: string[]) => {
     await executeTransaction(
       "addMultipleCandidates",
-      { 
-        check: currentState === 0, 
-        errorMessage: "Cannot add candidates. Voting is already active!" 
+      {
+        check: currentState === 0,
+        errorMessage: "Cannot add candidates. Voting is already active!"
       },
       [candidateIds, names],
       `Added ${candidateIds.length} candidate(s) successfully!`
@@ -224,9 +262,9 @@ export const useVotingContract = () => {
   const removeCandidates = async (candidateIds: number[]) => {
     await executeTransaction(
       "removeMultipleCandidates",
-      { 
-        check: currentState === 0, 
-        errorMessage: "Cannot remove candidates. Voting is already active!" 
+      {
+        check: currentState === 0,
+        errorMessage: "Cannot remove candidates. Voting is already active!"
       },
       [candidateIds]
     );
@@ -235,9 +273,9 @@ export const useVotingContract = () => {
   const setVotingPeriod = async (durationInSeconds: number) => {
     await executeTransaction(
       "setVotingPeriod",
-      { 
-        check: currentState === 0, 
-        errorMessage: "Voting period can only be set in the Setup phase!" 
+      {
+        check: currentState === 0,
+        errorMessage: "Voting period can only be set in the Setup phase!"
       },
       [durationInSeconds],
       `Voting duration set to ${durationInSeconds} seconds!`
@@ -252,6 +290,7 @@ export const useVotingContract = () => {
     votingStartTime: votingStartTime as bigint | undefined,
     votingEndTime: votingEndTime as bigint | undefined,
     winners: winners as Candidate[] | undefined,
+    remainingTime,
     verifyVoter,
     castVote,
     startVoting,

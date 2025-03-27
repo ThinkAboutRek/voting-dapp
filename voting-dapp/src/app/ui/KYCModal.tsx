@@ -5,8 +5,6 @@ import SumsubWebSdk from "@sumsub/websdk-react";
 const KYCModal = () => {
   const { showModal, kycAccessToken } = useKYCModal();
   
-  console.log("🛠 KYC Modal Opened - Access Token:", kycAccessToken); // Debugging
-
   if (!showModal) return null;
   if (!kycAccessToken) return null;
 

@@ -1,15 +1,13 @@
-import { polygonAmoy } from "viem/chains";
+import { polygonAmoy, sepolia } from "viem/chains";
 
-export const SUPPORTED_NETWORKS: any = [polygonAmoy]; //TODO: change to mainnet chain
-export const PARTICLE_OPTIONS = {//TODO: client provided keys
-    projectId: "c0f5a469-ea09-4674-abf5-f1dead0b6920",
-    clientKey: "c6zg9s9UZBUWPMmfwOtnFCLRh4yfGU3TvASWAO2f",
-    appId: "4b44551c-8499-4a93-9d5e-003915c33d22",
-    customStyle: {
-      zIndex: 2147483650, // must greater than 2147483646
-    },
-  }
-  export const WALLET_CONNECT_PROJECT_ID = '739e1b6df1475b28c372b00a8c67064a' 
-  export const BACKEND_BASE_URL =
+export const SUPPORTED_NETWORKS: any = [sepolia];
+export const WALLET_CONNECT_PROJECT_ID = '739e1b6df1475b28c372b00a8c67064a'
+export const BACKEND_BASE_URL =
   "https://voting-dapp-inner.vercel.app";
-  export const CONTRACT_ADDRESS = '0xb7DFD4Ca6874F464c2274410494972eBF86A6D92';
+// export const POLYGON_CONTRACT_ADDRESS = '0xb7DFD4Ca6874F464c2274410494972eBF86A6D92';
+export const SEPOLIA_CONTRACT_ADDRESS = '0x853287Ada2F0b617Fc0945a19b9C88AE98b75d2a';
+
+// export const APP_CONFIG = {
+//   rpcUrl: "https://eth-sepolia.g.alchemy.com/v2/2aUvl36AwoIdzsS64jsHiO9QE5t8Ftyh",
+//   votingAddress: "0x853287Ada2F0b617Fc0945a19b9C88AE98b75d2a"
+// }

@@ -6,6 +6,8 @@ import { useKYCModal } from "@/app/context/KYCModalContext";
 import { useEffect, useState } from "react";
 import { useVotingContract } from "@/app/hooks/useVotingContract";
 import toast from "react-hot-toast";
+import TransactionSpinner from '../ui/TransactionSpinner';
+
 
 export default function UserDashboard() {
   const { address, isConnected } = useAccount();
@@ -13,16 +15,16 @@ export default function UserDashboard() {
   const { kycStatus, openModal } = useKYCModal();
   const [loading, setLoading] = useState(false);
 
-  // Import voting contract functions
-  const { 
-    verifyVoter, 
-    castVote, 
-    candidates, 
-    hasVoted, 
-    isVerified, 
-    currentState, 
-    winners, 
-    refetchCandidates 
+  const {
+    verifyVoter,
+    castVote,
+    candidates,
+    hasVoted,
+    remainingTime,
+    isVerified,
+    currentState,
+    winners,
+    refetchCandidates
   } = useVotingContract();
 
   useEffect(() => {
@@ -30,14 +32,15 @@ export default function UserDashboard() {
       setLoading(false);
       return;
     }
-    
+
     if (kycStatus === "completed") {
       setLoading(true);
-      refetchCandidates();  // Fetch candidates when KYC is completed
+      refetchCandidates();  
     } else if (kycStatus !== "") {
       openModal();
     }
-  }, [isConnected, kycStatus, refetchCandidates, openModal]); 
+  }, [isConnected, kycStatus, refetchCandidates, openModal]);
+
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-start bg-gradient-to-b from-gray-900 to-indigo-950 text-white p-6">
@@ -46,7 +49,6 @@ export default function UserDashboard() {
           Decentralized Voting DApp
         </h1>
 
-        {/* Wallet Connection Section */}
         <div className="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl mb-8">
           {!isConnected ? (
             <>
@@ -73,37 +75,39 @@ export default function UserDashboard() {
           )}
         </div>
 
-        {/* Voting Section - Candidates Appear First */}
+
+
         <div className="bg-gray-800 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl border-l-4 border-blue-500">
           <h2 className="text-2xl font-bold mb-4 text-center text-blue-400">Ongoing Voting Session</h2>
 
-          {/* Show Candidates First (Before Verification) */}
           {candidates && candidates.length > 0 ? (
             <>
               <p className="text-gray-300 text-center mb-4">
                 Select a candidate to cast your vote.
               </p>
+
               <ul className="bg-gray-700 p-4 rounded-lg shadow-inner space-y-2">
                 {candidates.map((candidate) => (
-                  <li key={candidate.id} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg">
-                    <span className="text-white font-medium">{candidate.name}</span>
+                  <li key={candidate.candidateId} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg">
+                    <span className="text-white font-medium">{candidate.candidateName}</span>
                     <button
                       onClick={() => {
                         if (!isVerified) {
                           toast.error("You must verify as a voter before casting your vote.");
                           return;
                         }
-                        castVote(candidate.id);
+                        
+                        castVote(candidate.candidateId);
                       }}
                       disabled={!isVerified || hasVoted}
-                      className={`px-4 py-2 rounded-lg transition-all duration-300 shadow-md text-sm font-medium ${
-                        !isVerified || hasVoted 
+                      className={`px-4 py-2 rounded-lg transition-all duration-300 shadow-md text-sm font-medium ${!isVerified || hasVoted
                           ? "bg-gray-600 cursor-not-allowed"
                           : "bg-green-500 hover:bg-green-600 text-white"
-                      }`}
+                        }`}
                     >
                       {hasVoted ? "Voted" : "Vote"}
                     </button>
+
                   </li>
                 ))}
               </ul>
@@ -113,7 +117,20 @@ export default function UserDashboard() {
           )}
         </div>
 
-        {/* Verify as Voter - Only Visible When Needed */}
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg text-center text-yellow-400 mt-6">
+          {remainingTime !== null ? (
+            remainingTime > 0 ? (
+              <span>🕒 Voting ends in: <strong>{Math.floor(remainingTime / 60)} min {remainingTime % 60} sec</strong></span>
+            ) : (
+              <span>🚨 Voting has ended!</span>
+            )
+          ) : (
+            <span>...</span>
+          )}
+        </div>
+
+
+
         {!isVerified && isConnected && (
           <div className="mt-6 bg-yellow-900 bg-opacity-70 backdrop-blur-lg p-6 rounded-xl shadow-xl border-l-4 border-yellow-500">
             <h2 className="text-xl font-bold text-yellow-300 mb-3 text-center">Become a Verified Voter</h2>
@@ -131,13 +148,14 @@ export default function UserDashboard() {
           </div>
         )}
 
-        {/* Election Winner (if applicable) */}
+
+
         {currentState === 2 && winners && winners.length > 0 && (
           <div className="bg-blue-900 p-4 rounded-lg shadow-inner mt-6">
             <h3 className="text-white text-lg font-bold mb-2">🎉 Election Winner</h3>
-            {winners.map((winner) => (
-              <p key={winner.id} className="text-gray-300">
-                {winner.name} won with {winner.voteCount} votes!
+            {winners && Array.isArray(winners) && winners.map((winner) => (
+              <p key={winner.candidateId} className="text-gray-300">
+                {winner.candidateName} won with {winner.voteCount} votes!
               </p>
             ))}
           </div>

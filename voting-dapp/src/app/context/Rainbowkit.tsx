@@ -3,14 +3,26 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { sepolia, mainnet, localhost } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { SUPPORTED_NETWORKS, WALLET_CONNECT_PROJECT_ID } from "../utils/constants";
 
 const config = getDefaultConfig({
   appName: "Votify",
   projectId: WALLET_CONNECT_PROJECT_ID, 
-  chains: SUPPORTED_NETWORKS,
+  chains:  [
+    ...SUPPORTED_NETWORKS,
+    {
+      id: 11155111, // Sepolia network ID
+      rpcUrls: ["https://eth-sepolia.g.alchemy.com/v2/2aUvl36AwoIdzsS64jsHiO9QE5t8Ftyh"], // Replace with your Sepolia RPC URL
+      nativeCurrency: {
+        name: "Sepolia Ether",
+        symbol: "ETH",
+        decimals: 18,
+      },
+      chainName: "Sepolia",
+      blockExplorerUrls: ["https://sepolia.etherscan.io"], // Optional: link to a block explorer for Sepolia
+    },
+  ] as any,
   ssr: true,
 });
 
@@ -25,7 +37,7 @@ const RainbowKitContextProvider = ({
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>{children}</RainbowKitProvider>
+        <RainbowKitProvider coolMode>{children}</RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
