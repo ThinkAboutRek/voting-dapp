@@ -27,6 +27,8 @@ export default function UserDashboard() {
     refetchCandidates
   } = useVotingContract();
 
+  console.log("Candidates:", candidates);
+
   useEffect(() => {
     if (!isConnected) {
       setLoading(false);
