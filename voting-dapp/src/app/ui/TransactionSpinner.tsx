@@ -14,7 +14,7 @@ const TransactionSpinner: React.FC = () => {
       <div className="bg-white p-5 rounded-lg flex flex-col items-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
         <p className="text-gray-700 font-medium">Processing transaction...</p>
-        <p className="text-sm text-gray-500 mt-1">Please wait and don't close this window</p>
+        <p className="text-sm text-gray-500 mt-1">Please wait and donot close this window</p>
       </div>
     </div>
   );
