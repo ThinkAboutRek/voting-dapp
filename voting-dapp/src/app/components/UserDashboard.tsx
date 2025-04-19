@@ -35,7 +35,7 @@ export default function UserDashboard() {
       return;
     }
 
-    if (kycStatus === "completed") {
+    if (kycStatus === "completedd") {
       setLoading(true);
       refetchCandidates();  
     } else if (kycStatus !== "") {
